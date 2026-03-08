@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+    <head><meta charset="utf-8"></head><head></head><body>
+    <h1>Socket Test</h1>
+    <pre id="output">Waiting for agent state...</pre>
+    <script>
+        const socket = new WebSocket('ws://192.168.0.109:8000/ws/state');
+        socket.onmessage = (event) => {
+            document.getElementById("output").innerText = JSON.stringify(JSON.parse(event.data), null, 2);
+        };
+        socket.onerror = (err) => console.error("Connection failed. Is the server running?");
+    </script>
+
+</body></html>

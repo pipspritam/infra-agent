@@ -1,0 +1,17 @@
+[
+    {
+        "alert_id": "alert-010",
+        "infra_type": "vm",
+        "description": "host lelvdck001 is experiencing 90% CPU utilization and memory usage at 85%."
+    },
+    {
+        "alert_id": "alert-004",
+        "infra_type": "storage",
+        "description": "IOPS on volume-ssd-01 reached 95% capacity. Predicted exhaustion in 2 hours."
+    },
+    {
+        "alert_id": "alert-003",
+        "infra_type": "network",
+        "description": "East-West latency between worker-02 and worker-03 spiked to 340ms. Baseline is 2ms. Possible CNI issue."
+    }
+]
