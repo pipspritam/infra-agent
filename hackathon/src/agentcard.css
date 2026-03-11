@@ -1,0 +1,199 @@
+/* ===========================
+   CARD
+=========================== */
+
+.agent-card {
+  width: 280px;
+  height: 330px;
+
+  display: flex;
+  flex-direction: column;
+
+  border-radius: 16px;
+
+  background: linear-gradient(180deg, #ffffff, #f8f9fb);
+
+  border: 1px solid rgba(0, 0, 0, 0.06);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.12),
+    0 5px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ===========================
+   ACCENT STRIPE
+=========================== */
+
+.agent-card.monitor {
+  border-left: 5px solid #3b82f6;
+}
+
+.agent-card.worker {
+  border-left: 5px solid #22c55e;
+}
+
+/* ===========================
+   HEADER
+=========================== */
+
+.agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 14px 16px;
+
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.agent-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.agent-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.agent-status {
+  font-size: 11px;
+  font-weight: 600;
+
+  padding: 4px 10px;
+
+  border-radius: 20px;
+
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+/* ===========================
+   BODY
+=========================== */
+
+.agent-body {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 14px;
+}
+
+/* ===========================
+   ROBOT AREA
+=========================== */
+
+.robot-area {
+  position: relative;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+
+  height: 120px;
+}
+
+.robot-wrap {
+  animation: robot-bob 4s ease-in-out infinite;
+  z-index: 2;
+}
+
+.desk-shelf {
+  position: absolute;
+  bottom: 18px;
+
+  width: 70%;
+  height: 6px;
+
+  border-radius: 3px;
+
+  background: linear-gradient(to bottom, #e7e7e7, #d4d4d4);
+
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ===========================
+   FOOTER
+=========================== */
+
+.agent-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 14px;
+
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  animation: pulse 2s infinite;
+}
+
+.agent-host {
+  font-size: 11px;
+  color: #6b7280;
+  flex: 1;
+
+  font-family: monospace;
+}
+
+.act-chip {
+  font-size: 10px;
+
+  background: #f1f5f9;
+  padding: 3px 8px;
+
+  border-radius: 12px;
+
+  font-weight: 600;
+}
+
+/* ===========================
+   ANIMATIONS
+=========================== */
+
+@keyframes robot-bob {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
