@@ -953,3 +953,692 @@ body {
     opacity: 0;
   }
 }
+
+/* ══════════════════════════════════════════
+   MOCK BUTTON
+   ══════════════════════════════════════════ */
+
+.mock-btn {
+  margin-left: 12px;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--cream-3);
+  background: var(--cream-0);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.mock-btn:hover {
+  border-color: var(--amber-md);
+  color: var(--amber);
+  background: var(--amber-lt);
+}
+.mock-btn--active {
+  background: var(--coral-lt);
+  border-color: var(--coral);
+  color: var(--coral);
+  animation: pip-pulse 1.6s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════
+   ZOOM TRANSITIONS
+   ══════════════════════════════════════════ */
+
+.office-zoom-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.office-zoom-wrap--zooming-in {
+  animation: zoom-in-to-cubicle 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.office-zoom-wrap--zooming-out {
+  animation: zoom-out-from-cubicle 0.95s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes zoom-in-to-cubicle {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(2.4) translateY(6%);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(4) translateY(12%);
+    opacity: 0;
+  }
+}
+
+@keyframes zoom-out-from-cubicle {
+  0% {
+    transform: scale(4) translateY(12%);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(2.2) translateY(6%);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ══════════════════════════════════════════
+   CUBICLE ACTIVE STAGE
+   ══════════════════════════════════════════ */
+
+.cubicle-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  position: relative;
+  animation: fade-in 0.4s ease both;
+}
+
+.cubicle-backdrop {
+  width: min(680px, 95%);
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.cubicle-cards {
+  width: min(680px, 95%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 8px 0;
+  flex: 1;
+  min-height: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ══════════════════════════════════════════
+   AGENT CARD V2  (slim, sits below cubicle)
+   ══════════════════════════════════════════ */
+
+.agent-card-v2 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  position: relative;
+}
+
+.agent-card-v2--entering {
+  animation: card-enter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.agent-card-v2--exiting {
+  animation: card-exit 0.5s cubic-bezier(0.4, 0, 1, 1) both;
+}
+.agent-card-v2--left {
+  align-items: flex-start;
+  padding-left: 4px;
+}
+.agent-card-v2--right {
+  align-items: flex-end;
+  padding-right: 4px;
+}
+
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  65% {
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes card-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.88);
+  }
+}
+
+/* Badge */
+.agent-card-v2__badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-weight: 500;
+}
+
+.agent-card-v2__badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pip-pulse 1.8s ease-in-out infinite;
+}
+
+/* Name */
+.agent-card-v2__name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-0);
+  letter-spacing: -0.01em;
+}
+
+/* Bubble area */
+.agent-card-v2__bubble-area {
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════
+   COMIC SPEECH BUBBLES
+   ══════════════════════════════════════════ */
+
+.comic-bubble {
+  position: relative;
+  max-width: 240px;
+  padding: 9px 13px;
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 rgba(28, 26, 22, 0.12);
+}
+
+.comic-bubble--enter {
+  animation: comic-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes comic-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translateY(8px);
+  }
+  65% {
+    transform: scale(1.05) translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Speech bubble style */
+.comic-bubble--speech {
+  background: #fffdf7;
+  border: 2px solid var(--ink-0);
+  font-family: "Playfair Display", serif;
+}
+
+/* Thought bubble style */
+.comic-bubble--thought {
+  background: var(--cream-1);
+  border: 2px dashed var(--ink-3);
+  border-radius: 20px;
+  font-style: italic;
+}
+
+/* Left-side bubble: tail points down-left */
+.comic-bubble--left .comic-bubble__tail {
+  position: absolute;
+  bottom: -11px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 0px solid transparent;
+  border-top: 12px solid var(--ink-0);
+}
+.comic-bubble--left .comic-bubble__tail::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-top: 10px solid #fffdf7;
+}
+
+/* Right-side bubble: tail points down-right */
+.comic-bubble--right .comic-bubble__tail {
+  position: absolute;
+  bottom: -11px;
+  width: 0;
+  height: 0;
+  border-right: 8px solid transparent;
+  border-left: 0px solid transparent;
+  border-top: 12px solid var(--ink-0);
+}
+.comic-bubble--right .comic-bubble__tail::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  right: -6px;
+  width: 0;
+  height: 0;
+  border-right: 6px solid transparent;
+  border-top: 10px solid #fffdf7;
+}
+
+/* Thought trail dots */
+.comic-bubble__trail {
+  position: absolute;
+  bottom: -18px;
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+.comic-bubble__trail span {
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.comic-bubble__trail span:nth-child(1) {
+  width: 4px;
+  height: 4px;
+  animation: think-bob 1.4s ease-in-out infinite;
+}
+.comic-bubble__trail span:nth-child(2) {
+  width: 6px;
+  height: 6px;
+  animation: think-bob 1.4s ease-in-out infinite 0.15s;
+}
+.comic-bubble__trail span:nth-child(3) {
+  width: 8px;
+  height: 8px;
+  animation: think-bob 1.4s ease-in-out infinite 0.3s;
+}
+
+/* Bubble text */
+.comic-bubble__text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-0);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ══════════════════════════════════════════
+   TOP-BAR ADDITIONS (TI branding)
+   ══════════════════════════════════════════ */
+
+.top-bar-ti-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: #cc1f1f;
+  letter-spacing: -0.02em;
+}
+
+.top-bar-subtitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   OFFICE + CUBICLE SVGs
+   ══════════════════════════════════════════ */
+
+.office-idle-svg {
+  width: 100%;
+  height: auto;
+}
+
+.cubicle-backdrop-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ══════════════════════════════════════════
+   CUBICLE STAGE — CORRECTED LAYOUT
+   The backdrop SVG sits at top.
+   The cards row sits directly below it,
+   aligned to bottom of viewport.
+   ══════════════════════════════════════════ */
+
+.cubicle-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* push cards to bottom half */
+  justify-content: flex-start;
+  gap: 0;
+  position: relative;
+  animation: fade-in 0.4s ease both;
+  overflow: hidden;
+}
+
+.cubicle-backdrop {
+  /* sized to fill most of width, no flex stretch */
+  width: min(700px, 96%);
+  flex-shrink: 0;
+  margin-top: 6px;
+  /* no margin-bottom — cards are flush below */
+}
+
+.cubicle-cards {
+  width: min(700px, 96%);
+  /* fills the remaining height below backdrop */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start; /* top-aligned so badge/bubble/robot stack naturally */
+  justify-content: space-between;
+  gap: 12px;
+  /* small horizontal padding to keep cards inset from cubicle walls */
+  padding: 2px 20px 8px;
+}
+
+/* ══════════════════════════════════════════
+   AGENT CARD V2 — completely rewritten
+   Badge → Act → Bubble → Robot (top to bottom)
+   ══════════════════════════════════════════ */
+
+.agent-card-v2 {
+  flex: 1;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+  /* no padding-top so bubble + robot are right under desk line */
+}
+
+.agent-card-v2--left {
+  align-items: flex-start;
+}
+.agent-card-v2--right {
+  align-items: flex-end;
+}
+
+.agent-card-v2--entering {
+  animation: card-enter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Name badge */
+.agent-card-v2__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  font-weight: 500;
+}
+
+.agent-card-v2__badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pip-pulse 1.8s ease-in-out infinite;
+}
+
+/* Act label */
+.agent-card-v2__act-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  padding: 0 2px;
+}
+
+/* Bubble area */
+.agent-card-v2__bubble-area {
+  width: 100%;
+}
+
+/* ── Robot wrap ──
+   Sized to match the SVG viewBox aspect ratio (120×180 = 2:3).
+   Max-height ensures it never overflows into footer.           */
+.robot-wrap {
+  width: 110px;
+  height: 165px; /* exact 2:3 ratio */
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+
+/* Shadow under robot */
+.robot-wrap::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 8px;
+  background: radial-gradient(
+    ellipse,
+    rgba(28, 26, 22, 0.12) 0%,
+    transparent 70%
+  );
+  border-radius: 50%;
+}
+
+/* Robot SVG fills wrap exactly */
+.robot-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Left card: robot on left side */
+.agent-card-v2--left .robot-wrap {
+  margin-left: 10px;
+}
+/* Right card: robot on right side */
+.agent-card-v2--right .robot-wrap {
+  margin-right: 10px;
+}
+
+/* ══════════════════════════════════════════
+   COMIC BUBBLES — override background/border
+   to use CSS vars set on each instance
+   ══════════════════════════════════════════ */
+
+.comic-bubble--speech {
+  background: var(--bubble-bg, var(--cream-0));
+  border-color: var(--bubble-border, var(--ink-0));
+}
+
+.comic-bubble--thought {
+  background: var(--bubble-bg, var(--cream-1));
+  border-color: var(--bubble-border, var(--ink-3));
+}
+
+/* Inline thinking dots (inside bubble before text) */
+.think-dots-inline {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.think-dots-inline span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  animation: think-bob 1.4s ease-in-out infinite;
+}
+.think-dots-inline span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.think-dots-inline span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Thought trail positioning variants */
+.comic-bubble__trail--left {
+  left: 14px;
+}
+.comic-bubble__trail--right {
+  right: 14px;
+}
+
+/* ══════════════════════════════════════════
+   ANIMATION ADDITIONS
+   ══════════════════════════════════════════ */
+
+@keyframes alert-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes wave-anim {
+  from {
+    transform: scaleY(0.5);
+  }
+  to {
+    transform: scaleY(1.2);
+  }
+}
+
+@keyframes screen-blink {
+  0%,
+  94%,
+  100% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 0;
+  }
+}
+
+@keyframes robot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ══════════════════════════════════════════
+   ACTIVE SCENE WRAP
+   The single SVG that contains everything:
+   room + desk + robots + bubbles.
+   It fills the stage content area, preserving
+   the SVG aspect ratio (700:520 = 1.346:1).
+   ══════════════════════════════════════════ */
+
+.active-scene-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  animation: fade-in 0.4s ease both;
+}
+
+.active-scene-wrap svg {
+  /* Fill width but never exceed height of stage */
+  width: 100%;
+  height: 100%;
+  max-width: calc((100vh - 48px) * 1.346); /* 700/520 */
+  max-height: calc(100vh - 48px - 16px);
+  object-fit: contain;
+}
+
+/* TI bar additions */
+.top-bar-ti-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: #cc1f1f;
+  letter-spacing: -0.02em;
+}
+
+.top-bar-subtitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Animation additions */
+@keyframes alert-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@keyframes wave-anim {
+  from {
+    transform: scaleY(0.5);
+  }
+  to {
+    transform: scaleY(1.3);
+  }
+}
+@keyframes robot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
