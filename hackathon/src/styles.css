@@ -251,20 +251,22 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 0;
 }
 
 .office-idle-svg-wrap {
-  width: min(860px, 94%);
-  max-height: calc(100vh - 140px);
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .office-idle-svg-wrap svg {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   filter: drop-shadow(0 10px 48px rgba(28, 26, 22, 0.1));
 }
 
@@ -1050,19 +1052,13 @@ body {
 
 @keyframes cleaner-trundle {
   0% {
-    transform: translateX(0);
-  }
-  45% {
-    transform: translateX(140px);
+    transform: translateX(-140px);
   }
   50% {
-    transform: translateX(140px) scaleX(-1);
-  }
-  95% {
-    transform: translateX(0) scaleX(-1);
+    transform: translateX(140px);
   }
   100% {
-    transform: translateX(0);
+    transform: translateX(-140px);
   }
 }
 
