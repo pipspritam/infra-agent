@@ -2,7 +2,7 @@
 server.py — VMware A2A Protocol Server
 ======================================
 This module exposes the VMware LangGraph agent as a standard A2A service.
-It handles the HTTP/JSON-RPC networking while delegating all logic to the core.
+It supports real-time streaming (SSE) to report long-running VM provisioning steps.
 """
 
 import asyncio
@@ -11,30 +11,39 @@ import uvicorn
 from langchain_core.messages import HumanMessage, SystemMessage
 
 # --- A2A SDK Imports ---
-from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+from a2a.types import AgentCard, AgentSkill, AgentCapabilities, TaskState, TaskStatusUpdateEvent, TaskStatus
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.server.apps import A2AFastAPIApplication
-from a2a.utils import new_agent_text_message  # <--- The official helper!
+from a2a.utils import new_agent_text_message 
 
 # --- Import your isolated LangGraph Brain ---
 from agents.vmware_agent.agent import vmware_app, SYSTEM_PROMPT
 from agents.vmware_agent.utility import log, push_agent_state
 
-# ─── 1. The A2A Execution Bridge ──────────────────────────────────────────────
+# ─── 1. The A2A Execution Bridge (Now with Streaming!) ────────────────────────
 
 class VMwareAgentExecutor(AgentExecutor):
     """Bridges the A2A Protocol with our LangGraph Agent."""
     
     async def execute(self, context, event_queue):
-        # 1. Official SDK way to securely extract the user's text
         user_message = context.get_user_input()
-        
         log.info(f"\n📥 [A2A Task Received]: {user_message}")
-        await push_agent_state("VMware A2A Server", "Starting", f"Received task via A2A")
         
-        # Set up the initial state for LangGraph, injecting the System Prompt
+        # 1. Immediately acknowledge the task has started
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                taskId=context.task_id,
+                contextId=context.context_id,
+                status=TaskStatus(
+                    state=TaskState.working,
+                    message=new_agent_text_message("Analyzing Kubernetes resource request...", context.context_id, context.task_id)
+                ),
+                final=False
+            )
+        )
+        
         inputs = {
             "messages": [
                 SystemMessage(content=SYSTEM_PROMPT),
@@ -42,46 +51,86 @@ class VMwareAgentExecutor(AgentExecutor):
             ]
         }
         
-        # Run the core LangGraph application
-        log.info("⚙️  Passing task to LangGraph core...")
-        final_state = await vmware_app.ainvoke(inputs, config={"recursion_limit": 10})
+        # 2. Run LangGraph in STREAMING mode for long-running VM tasks
+        log.info("⚙️  Passing task to LangGraph core (Streaming mode)...")
+        final_msg = "Task completed, but no final message was generated."
         
-        # Extract the final conversational response from the agent
-        final_msg = final_state["messages"][-1].content
+        # We use astream to catch intermediate steps like "Cloning VM"
+        async for event in vmware_app.astream(inputs, stream_mode="updates", config={"recursion_limit": 10}):
+            # If the agent called a tool (e.g., clone_vm or hot_add_resources)
+            if "agent" in event and event["agent"]["messages"][0].tool_calls:
+                tool_name = event["agent"]["messages"][0].tool_calls[0]["name"]
+                
+                # Push real-time SSE updates over A2A so the Monitoring Agent isn't left hanging!
+                update_text = f"Executing infrastructure task: {tool_name}..."
+                log.info(f"📡 [Streaming to Client]: {update_text}")
+                
+                await event_queue.enqueue_event(
+                    TaskStatusUpdateEvent(
+                        taskId=context.task_id,
+                        contextId=context.context_id,
+                        status=TaskStatus(
+                            state=TaskState.working,
+                            message=new_agent_text_message(update_text, context.context_id, context.task_id)
+                        ),
+                        final=False
+                    )
+                )
+            
+            # Capture the final agent response
+            if "agent" in event and not event["agent"]["messages"][0].tool_calls:
+                final_msg = event["agent"]["messages"][0].content
+        
         log.info(f"✅ [A2A Task Complete]: {final_msg}")
-        await push_agent_state("VMware A2A Server", "Finished", final_msg)
         
-        # 2. Official SDK way to format and send the response back over the network
+        # 3. Mark task as COMPLETED and send the final artifact/message
         await event_queue.enqueue_event(
-            new_agent_text_message(final_msg, context.context_id, context.task_id)
+            TaskStatusUpdateEvent(
+                taskId=context.task_id,
+                contextId=context.context_id,
+                status=TaskStatus(
+                    state=TaskState.completed,
+                    message=new_agent_text_message(final_msg, context.context_id, context.task_id)
+                ),
+                final=True
+            )
         )
 
     async def cancel(self, context, event_queue):
-        """Required by the A2A SDK to handle task cancellation requests."""
-        log.warning("⚠️ [A2A Task Cancelled]: Cancellation requested by client.")
-        raise Exception("Cancellation is not supported by this agent.")
+        log.warning("⚠️ [A2A Task Cancelled]: Client requested abort.")
+        raise Exception("Cancellation is not supported while provisioning VMs.")
 
-# ─── 2. Define the Agent Card ─────────────────────────────────────────────────
+# ─── 2. Define the Agent Card (Hackathon Scenario Setup) ──────────────────────
 
 agent_card = AgentCard(
-    name="VMware Compute Agent",
-    description="Specialist agent that resolves infrastructure alerts by managing VM CPU and Memory.",
+    name="VMware Infrastructure Agent",
+    description="Specialist agent for Kubernetes worker node remediation. Supports Vertical Scaling (Hot-Add), Horizontal Scaling (Cloning), and Scale-Downs.",
     version="1.0.0",
     url="http://localhost:8005",
-    capabilities=AgentCapabilities(streaming=True),
+    capabilities=AgentCapabilities(streaming=True), 
     defaultInputModes=["text/plain"],
     defaultOutputModes=["text/plain"],
     skills=[
         AgentSkill(
-            id="manage_compute",
-            name="Manage Compute Resources",
-            description="Increases CPU cores and Memory GB for virtual machines safely.",
-            tags=["compute", "infrastructure", "scaling", "vmware"],
-            examples=[
-                "Increase CPU for web-server-01 by 4 cores.",
-                "Add 8GB of memory to database-node-02.",
-                "The web-server-01 VM is crashing due to OOM errors. Fix it."
-            ]
+            id="vertical_scaling",
+            name="Hot-Add CPU and Memory",
+            description="Increases CPU cores and Memory GB on running VMs via pyvmomi without rebooting.",
+            tags=["compute", "scaling", "vmware", "kubernetes-worker"],
+            examples=["Increase CPU for k8s-worker-01 by 4 cores."]
+        ),
+        AgentSkill(
+            id="horizontal_scaling",
+            name="Clone Golden Image",
+            description="Clones a pre-configured Kubernetes worker node template and joins it to the cluster to absorb load.",
+            tags=["provisioning", "cloning", "vmware", "scaling"],
+            examples=["The cluster is maxed out. Clone a new worker node from template 'k8s-golden-image' and add it to the cluster."]
+        ),
+        AgentSkill(
+            id="scale_down",
+            name="Decommission Node",
+            description="Cordons, drains, and deletes a VM to save compute resources.",
+            tags=["cleanup", "cost-saving", "vmware", "kubernetes-worker"],
+            examples=["Cluster load is low. Delete extra worker node k8s-worker-04."]
         )
     ]
 )
@@ -101,8 +150,6 @@ a2a_app = a2a_server.build()
 
 if __name__ == "__main__":
     log.info("=" * 55)
-    log.info("  Starting VMware A2A Server on port 8005...")
-    log.info("  Agent Card available at: http://localhost:8005/.well-known/agent-card.json")
+    log.info("  Starting VMware A2A Server (Streaming Enabled) on port 8005...")
     log.info("=" * 55)
-    
     uvicorn.run(a2a_app, host="0.0.0.0", port=8005)

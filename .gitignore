@@ -2,3 +2,4 @@ _pycache__
 *.pyc
 .hintrc
 .vscode/
+.env

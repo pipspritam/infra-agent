@@ -3,10 +3,12 @@ langgraph_agent.py — InfraGuard Monitoring Agent (LangGraph Version)
 ====================================================================
 True agentic loop implemented using LangGraph.
 Retains the single-tool-call enforcement for local Ollama models.
+Now includes an action-memory loop to prevent alert fatigue.
 """
 
 import asyncio
 import signal
+import time
 from datetime import datetime
 from typing import Literal
 
@@ -18,27 +20,67 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 
-
 from agents.monitoring_agent.tools import tools
 from agents.monitoring_agent.utility import log, push_agent_state
 from agents.monitoring_agent.config import OLLAMA_BASE_URL, OLLAMA_MODEL, POLL_INTERVAL_SEC, MAX_ITERATIONS, OLLAMA_API_KEY
 
+# ─── Action Memory Database (In-Memory for now) ───────────────────────────────
+
+ALERT_MEMORY = {}
+MEMORY_WINDOW_SECONDS = 1800 # 30 minutes
+
+@tool
+def check_alert_memory(identifier: str) -> str:
+    """Check if an alert or host has been acted upon recently. Pass the alert_id or hostname."""
+    record = ALERT_MEMORY.get(identifier)
+    if not record:
+        return "No recent actions found in memory."
+    
+    elapsed = time.time() - record["timestamp"]
+    if elapsed < MEMORY_WINDOW_SECONDS:
+        return f"Action '{record['action']}' was taken {int(elapsed/60)} minutes ago."
+    
+    return "Prior action found, but it is older than the 30-minute threshold. Treat as new."
+
+@tool
+def update_alert_memory(identifier: str, action_taken: str) -> str:
+    """Log the action taken for an alert or host to prevent duplicate work. Pass the alert_id or hostname and the action."""
+    ALERT_MEMORY[identifier] = {
+        "action": action_taken,
+        "timestamp": time.time()
+    }
+    return f"Memory successfully updated for {identifier}."
+
+# Combine imported tools with our new memory tools
+all_tools = tools + [check_alert_memory, update_alert_memory]
+
+
 # ─── System Prompt ────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are the Lead Infrastructure Monitoring Agent.
-You fetch alerts, but you DO NOT fix compute issues yourself. 
+You fetch alerts, but you DO NOT fix compute issues yourself. You maintain an action memory to prevent duplicate work.
 
 WORKFLOW:
-1. Call `fetch_pending_alerts`
-2. If the alert is about CPU, memory, or compute, call `transfer_to_vmware`
-3. Wait for the VMware agent to return success.
-4. Call `acknowledge_alert` using the alert_id.
-5. Provide a plain-text summary of what was done.
+1. Call `fetch_pending_alerts`.
+2. If no alerts are found, output "No alerts found." and stop.
+3. For the fetched alert, call `check_alert_memory` using the alert_id or hostname to see if action was recently taken.
+4. DECISION MATRIX:
+   - IF the memory shows the same issue was routed or resolved recently: 
+     a. Decide to IGNORE the alert.
+     b. Call `acknowledge_alert` using the alert_id.
+     c. Call `update_alert_memory` logging that the alert was ignored due to recent prior action.
+     d. Provide a plain-text summary and stop.
+   - IF the memory shows no recent action AND the alert is about CPU, memory, or compute:
+     a. Call `transfer_to_vmware`.
+     b. Wait for the VMware agent to return success.
+     c. Call `acknowledge_alert` using the alert_id.
+     d. Call `update_alert_memory` logging that the issue was routed to VMware.
+     e. Provide a plain-text summary and stop.
 
 CRITICAL RULES:
 - Call ONE tool at a time.
 - Always wait for the tool to finish before calling the next one.
-- If no alerts are found, simply output "No alerts found."
+- Always check memory before routing, and always update memory after acting.
 """
 
 # ─── LangGraph Setup ──────────────────────────────────────────────────────────
@@ -49,7 +91,8 @@ llm = ChatOpenAI(
     model=OLLAMA_MODEL, 
     temperature=0.0
 )
-llm_with_tools = llm.bind_tools(tools)
+# Bind the expanded toolset
+llm_with_tools = llm.bind_tools(all_tools)
 
 # Node 1: Call the Model
 async def call_model(state: MessagesState):
@@ -92,7 +135,7 @@ def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
 # Build Graph
 workflow = StateGraph(MessagesState)
 workflow.add_node("agent", call_model)
-workflow.add_node("tools", ToolNode(tools)) # LangGraph's prebuilt node handles execution
+workflow.add_node("tools", ToolNode(all_tools)) # Pass the expanded toolset here
 
 workflow.set_entry_point("agent")
 workflow.add_conditional_edges("agent", should_continue)
@@ -131,7 +174,7 @@ async def run_agent_cycle(cycle_num: int):
                 # Log the tool return event (ToolNode appends ToolMessages)
                 tool_msgs = event["tools"]["messages"]
                 for msg in tool_msgs:
-                    log.info(f"  ← Tool result: {msg.content}")
+                    log.info(f"  ← Tool result ({msg.name}): {msg.content}")
                     await push_agent_state("Monitoring Agent", "ToolReturned", "Tool call completed")
             
             if "agent" in event and not event["agent"]["messages"][0].tool_calls:
@@ -153,7 +196,7 @@ async def main():
     global _running
 
     log.info("=" * 55)
-    log.info("  InfraGuard LangGraph Agent")
+    log.info("  InfraGuard LangGraph Agent (With Memory)")
     log.info("=" * 55)
     
     signal.signal(signal.SIGINT,  _stop)

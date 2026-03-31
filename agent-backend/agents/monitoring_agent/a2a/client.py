@@ -1,8 +1,8 @@
 """
 client.py — Monitoring Agent (A2A Client)
 =========================================
-This agent acts as the system entry point. It polls for alerts and uses 
-the A2A SDK to dynamically route compute tasks to the remote VMware Agent.
+This agent acts as the system entry point. It polls for alerts, dynamically 
+discovers specialized peer agents using A2A Agent Cards, and delegates tasks.
 """
 
 import asyncio
@@ -19,7 +19,6 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 
-# --- Make sure these imports are at the top of your file ---
 from a2a.types import MessageSendParams, SendMessageRequest
 from a2a.client import A2ACardResolver, ClientFactory, ClientConfig
 import uuid
@@ -28,24 +27,12 @@ import uuid
 from agents.monitoring_agent.config import ALERTS_API_URL, ACK_API_URL, OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL, POLL_INTERVAL_SEC, MAX_ITERATIONS
 from agents.monitoring_agent.utility import log, push_agent_state
 
-VMWARE_A2A_URL = "http://localhost:8005"
 
 # ─── 1. Core Infrastructure Tools ─────────────────────────────────────────────
 
 @tool
 async def fetch_pending_alerts() -> dict:
     """Fetch the latest infrastructure alert from the monitoring system. Call this first."""
-    # await push_agent_state("Monitor Agent", "Acting", "Fetching pending alerts")
-    # try:
-    #     async with httpx.AsyncClient(timeout=10.0) as client:
-    #         resp = await client.get(ALERTS_API_URL)
-    #         resp.raise_for_status()
-    #         data = resp.json()
-    #         log.info(f"📥 [fetch_pending_alerts] {data}")
-    #         return data
-    # except Exception as e:
-    #     return {"error": str(e)}
-    # Simulated response for testing without a real API
     await asyncio.sleep(1)  # Simulate network delay
     data = {
         "alert_id": "alert-123",
@@ -60,37 +47,63 @@ async def acknowledge_alert(alert_id: str) -> dict:
     """Acknowledge and close an alert after successful remediation.
     Always call this as the final step once the remediation tool has returned.
     """
-    # await push_agent_state("Monitor Agent", "Acting", f"Acknowledging alert {alert_id}")
-    # url = ACK_API_URL.format(alert_id=alert_id)
-    # try:
-    #     async with httpx.AsyncClient(timeout=10.0) as client:
-    #         resp = await client.get(url)
-    #         resp.raise_for_status()
-    #         log.info(f"✅ [acknowledge_alert] Alert {alert_id} acknowledged.")
-    #         return resp.json()
-    # except Exception as e:
-    #     return {"status": "error", "message": str(e)}
-    # Simulated response for testing without a real API
     await asyncio.sleep(1)  # Simulate network delay
     log.info(f"✅ [acknowledge_alert] Alert {alert_id} acknowledged.")
     return {"status": "success", "message": f"Alert {alert_id} acknowledged."}
 
 
-# ─── 2. The A2A Handoff Tool ──────────────────────────────────────────────────
+# ─── 2. The Dynamic A2A Discovery & Handoff Tools ─────────────────────────────
+
+# A simulated registry of known A2A endpoints on your network
+KNOWN_AGENT_URLS = [
+    "http://localhost:8005", # e.g., VMware/Compute Agent
+    "http://localhost:8006", # e.g., Network Agent
+    "http://localhost:8007", # e.g., Database Agent
+]
 
 @tool
-async def talk_to_vmware(alert_id: str, message: str) -> str:
-    """Communicate with the remote VMware Agent.
-    Use this to send instructions OR answer the VMware Agent's clarifying questions.
-    You MUST provide the alert_id to maintain the conversation history.
+async def discover_agent(required_capability: str) -> str:
+    """Discover a remote A2A agent capable of handling a specific capability or task (e.g., 'cpu', 'network', 'database').
+    Returns the dynamic URL of the appropriate agent so you can delegate to it.
     """
-    payload = f"SESSION:{alert_id}|{message}"
-    log.info(f"📤 [A2A Chat to VMware]: {message}")
+    log.info(f"🔍 [discover_agent] Searching network for agent with capability: '{required_capability}'")
+    
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for base_url in KNOWN_AGENT_URLS:
+            try:
+                # The A2ACardResolver automatically hits the /.well-known/agent.json endpoint
+                resolver = A2ACardResolver(httpx_client=client, base_url=base_url)
+                card = await resolver.get_agent_card()
+                
+                # Extract text from the agent card to search for capabilities
+                card_text = f"{getattr(card, 'name', '')} {getattr(card, 'description', '')}".lower()
+                
+                # Check explicit skills if the agent defined them
+                skills = getattr(card, 'skills', [])
+                skills_text = " ".join([f"{getattr(s, 'name', '')} {getattr(s, 'description', '')}" for s in skills]).lower()
+                
+                search_term = required_capability.lower()
+                if search_term in card_text or search_term in skills_text:
+                    log.info(f"✅ [discover_agent] Found matching agent '{card.name}' at {base_url}")
+                    return f"Found matching agent: '{card.name}' at URL: {base_url}"
+                    
+            except Exception as e:
+                log.debug(f"Failed to fetch or parse card from {base_url}: {e}")
+                continue
+                
+    return "No suitable agent found for the required capability."
+
+@tool
+async def delegate_to_agent(agent_url: str, alert_id: str, message: str) -> str:
+    """Communicate with a dynamically discovered remote A2A Agent.
+    You MUST provide the exact agent_url returned from `discover_agent`, the alert_id, and your message/instructions.
+    """
+    log.info(f"📤 [A2A Chat to {agent_url}]: {message}")
     
     try:
         async with httpx.AsyncClient(timeout=180.0) as httpx_client:
-            # 1. Resolve the Card and build the Smart Client
-            resolver = A2ACardResolver(httpx_client=httpx_client, base_url=VMWARE_A2A_URL)
+            # Re-resolve the card to build the smart client
+            resolver = A2ACardResolver(httpx_client=httpx_client, base_url=agent_url)
             agent_card = await resolver.get_agent_card()
             
             factory = ClientFactory(
@@ -101,28 +114,22 @@ async def talk_to_vmware(alert_id: str, message: str) -> str:
             )
             a2a_client = factory.create(card=agent_card)
             
-            # 2. THE FIX: Just pass a raw message dictionary!
-            # The smart client handles the UUIDs, SendMessageRequest, and JSON-RPC envelopes.
+            # Send standard A2A message payload
             message_payload = {
                 "messageId": str(uuid.uuid4()),
-                "contextId": alert_id,       # ← proper way to track session
+                "contextId": alert_id, 
                 "role": "user",
-                "parts": [{"text": message}] # ← clean message, no SESSION: prefix needed
+                "parts": [{"text": message}] 
             }
             
-            # 3. Stream the response directly
             reply_text = ""
-            
             async for event in a2a_client.send_message(message_payload):
-                # Safely extract text from the streaming chunks, accounting for Pydantic V2
                 event_data = event.root if hasattr(event, "root") else event
                 
-                # Dig down into the event structure
                 msg_obj = getattr(event_data, "message", None)
                 if not msg_obj and hasattr(event_data, "result"):
                     msg_obj = getattr(event_data.result, "message", None)
                 
-                # If we found the message parts, extract the text
                 parts = getattr(msg_obj, "parts", None) or getattr(event_data, "parts", None)
                 if parts:
                     for part in parts:
@@ -134,9 +141,9 @@ async def talk_to_vmware(alert_id: str, message: str) -> str:
                     reply_text += event_data.text
             
             if not reply_text:
-                reply_text = "VMware agent completed the task successfully (no text returned)."
+                reply_text = "Remote agent completed the task successfully (no text returned)."
             
-            log.info(f"🎯 [A2A Reply from VMware]: {reply_text}")
+            log.info(f"🎯 [A2A Reply from {agent_url}]: {reply_text}")
             return reply_text
             
     except Exception as e:
@@ -145,21 +152,26 @@ async def talk_to_vmware(alert_id: str, message: str) -> str:
     
 # ─── 3. LangGraph Setup ───────────────────────────────────────────────────────
 
-monitor_tools = [fetch_pending_alerts, acknowledge_alert, talk_to_vmware]
+# Note: We replaced talk_to_vmware with discover_agent and delegate_to_agent
+monitor_tools = [fetch_pending_alerts, discover_agent, delegate_to_agent, acknowledge_alert]
 
+# The prompt now dynamically orchestrates instead of assuming VMware
 SYSTEM_PROMPT = """You are the Lead Infrastructure Monitoring Agent.
-You fetch alerts, but you DO NOT fix compute issues yourself. 
+You fetch alerts, but you DO NOT fix infrastructure issues yourself. You must dynamically delegate to specialized remote agents.
 
 WORKFLOW:
-1. Call `fetch_pending_alerts`
-2. If the alert is about CPU, memory, or compute, call `transfer_to_vmware`
-3. Wait for the VMware agent to return success.
-4. Call `acknowledge_alert` using the alert_id.
-5. Provide a plain-text summary of what was done.
+1. Call `fetch_pending_alerts`.
+2. Analyze the alert to determine the core capability needed (e.g., 'cpu', 'memory', 'database').
+3. Call `discover_agent` using that capability keyword to find an appropriate remote agent.
+4. Call `delegate_to_agent` using the discovered URL and pass the instructions.
+5. Wait for the remote agent to return success.
+6. Call `acknowledge_alert` using the alert_id.
+7. Provide a plain-text summary of what was done.
 
 CRITICAL RULES:
 - Call ONE tool at a time.
 - Always wait for the tool to finish before calling the next one.
+- Never guess or hardcode the agent URL. Always use `discover_agent` first.
 - If no alerts are found, simply output "No alerts found."
 """
 
