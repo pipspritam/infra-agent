@@ -69,10 +69,11 @@ async def call_model(state: MessagesState):
 
     return {"messages": [response]}
 
-def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
+async def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
     last_message = state["messages"][-1]
     if last_message.tool_calls:
         return "tools"
+    await push_agent_state("VMware Agent", "Done", "No more tools to call, ending execution.")
     return "__end__"
 
 # ─── 3. Build & Compile the Graph ─────────────────────────────────────────────
