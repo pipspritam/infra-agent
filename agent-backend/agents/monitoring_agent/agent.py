@@ -21,43 +21,31 @@ from langgraph.prebuilt import ToolNode
 
 from agents.monitoring_agent.tools import tools
 from agents.monitoring_agent.utility import log, push_agent_state
-from agents.monitoring_agent.config import OLLAMA_BASE_URL, OLLAMA_MODEL, POLL_INTERVAL_SEC, MAX_ITERATIONS
+from agents.monitoring_agent.config import OLLAMA_BASE_URL, OLLAMA_MODEL, POLL_INTERVAL_SEC, MAX_ITERATIONS, OLLAMA_API_KEY
 
 # ─── System Prompt ────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are an infrastructure monitoring agent for a Kubernetes cluster.
-You resolve alerts autonomously by calling tools as needed.
+SYSTEM_PROMPT = """You are the Lead Infrastructure Monitoring Agent.
+You fetch alerts, but you DO NOT fix compute issues yourself. 
 
-## CRITICAL RULES
-1. Call exactly ONE tool per response using the tool_calls mechanism.
-2. NEVER write tool calls as text or JSON in your message. Use the actual tool call feature.
-3. NEVER say "I will call X" — just call it directly.
-4. Always wait for the tool result before deciding the next step.
+WORKFLOW:
+1. Call `fetch_pending_alerts`
+2. If the alert is about CPU, memory, or compute, call `transfer_to_vmware`
+3. Wait for the VMware agent to return success.
+4. Call `acknowledge_alert` using the alert_id.
+5. Provide a plain-text summary of what was done.
 
-## WORKFLOW — follow these steps in order:
-
-Step 1: Call fetch_pending_alerts.
-Step 2: Read the alert (alert_id, infra_type, description).
-        Call every remediation tool needed to fully resolve the alert, one at a time.
-        Available remediation tools:
-        - Disk / storage / volume / IOPS / capacity issues → increase_storage
-        - CPU / compute / throttle issues                  → increase_cpu
-        - Memory / RAM / OOM / heap issues                 → increase_memory
-
-Step 3: After ALL required remediation tools have succeeded, call acknowledge_alert
-        with the alert_id from Step 1.
-Step 4: Respond in plain text listing every action taken. No more tool calls.
-
-## EDGE CASES
-- If there is no alert or an error, respond "No alerts found." — do not call any remediation tool.
-- Never repeat a tool that already succeeded this cycle.
+CRITICAL RULES:
+- Call ONE tool at a time.
+- Always wait for the tool to finish before calling the next one.
+- If no alerts are found, simply output "No alerts found."
 """
 
 # ─── LangGraph Setup ──────────────────────────────────────────────────────────
 
 llm = ChatOpenAI(
     base_url=OLLAMA_BASE_URL, 
-    api_key="ollama", 
+    api_key=OLLAMA_API_KEY, 
     model=OLLAMA_MODEL, 
     temperature=0.0
 )

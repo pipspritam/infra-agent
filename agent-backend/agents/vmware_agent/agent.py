@@ -16,7 +16,7 @@ from langgraph.prebuilt import ToolNode
 # Assume 'tools' contains all tools, but we selectively bind only the VM ones
 from agents.vmware_agent.tools import increase_cpu, increase_memory 
 from agents.vmware_agent.utility import log, push_agent_state
-from agents.vmware_agent.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from agents.vmware_agent.config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_API_KEY
 
 # ─── 1. Narrow the Agent's Identity & Tools ───────────────────────────────────
 
@@ -37,9 +37,10 @@ Your ONLY job is to manage virtual machine compute resources (CPU and Memory).
 
 llm = ChatOpenAI(
     base_url=OLLAMA_BASE_URL, 
-    api_key="ollama", 
+    api_key=OLLAMA_API_KEY, 
     model=OLLAMA_MODEL, 
-    temperature=0.0
+    temperature=0.0,
+    
 )
 llm_with_tools = llm.bind_tools(VM_TOOLS)
 

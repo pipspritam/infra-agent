@@ -18,15 +18,15 @@ async def increase_cpu(vm_name: str, cores: int = 2) -> dict:
     """
     await push_agent_state("Monitoring Agent", "Scaling", f"Increasing CPU for {vm_name} by {cores} cores")
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(INFRA_CPU_API, json={"vm_name": vm_name, "cores": cores})
-            r.raise_for_status()
-            return r.json()
+        # async with httpx.AsyncClient(timeout=10.0) as client:
+        #     r = await client.post(INFRA_CPU_API, json={"vm_name": vm_name, "cores": cores})
+        #     r.raise_for_status()
+        #     return r.json()
         # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # result = {"status": "success", "message": f"CPU increased for {vm_name} by {cores} cores"}
-        # log.info(f"[increase_cpu] {result}")
-        # return result
+        await asyncio.sleep(1)  # Simulate network delay
+        result = {"status": "success", "message": f"CPU increased for {vm_name} by {cores} cores"}
+        log.info(f"[increase_cpu] {result}")
+        return result
     except Exception as e:
         log.error(f"[increase_cpu] {e}")
         return {"status": "error", "message": str(e)}
@@ -42,15 +42,15 @@ async def increase_memory(vm_name: str, memory_gb: int = 8) -> dict:
     """
     await push_agent_state("Monitoring Agent", "Scaling", f"Increasing memory for {vm_name} by {memory_gb}GB")
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(INFRA_MEM_API, json={"vm_name": vm_name, "ram_gb": memory_gb})
-            r.raise_for_status()
-            return r.json()
+        # async with httpx.AsyncClient(timeout=10.0) as client:
+        #     r = await client.post(INFRA_MEM_API, json={"vm_name": vm_name, "ram_gb": memory_gb})
+        #     r.raise_for_status()
+        #     return r.json()
         # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # result = {"status": "success", "message": f"Memory increased for {vm_name} by {memory_gb}GB"}
-        # log.info(f"[increase_memory] {result}")
-        # return result
+        await asyncio.sleep(1)  # Simulate network delay
+        result = {"status": "success", "message": f"Memory increased for {vm_name} by {memory_gb}GB"}
+        log.info(f"[increase_memory] {result}")
+        return result
     
     except Exception as e:
         log.error(f"[increase_memory] {e}")

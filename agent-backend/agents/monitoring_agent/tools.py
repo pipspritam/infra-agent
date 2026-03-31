@@ -2,7 +2,10 @@ from langchain_core.tools import tool
 import httpx
 import asyncio
 from agents.monitoring_agent.utility import log, push_agent_state
-from agents.monitoring_agent.config import ALERTS_API_URL, ACK_API_URL, INFRA_STORAGE_API, INFRA_CPU_API, INFRA_MEM_API
+from agents.monitoring_agent.config import ALERTS_API_URL, ACK_API_URL, INFRA_STORAGE_API, INFRA_CPU_API, INFRA_MEM_API, VMWARE_A2A_URL
+from a2a.client import A2ACardResolver, A2AClient
+from a2a.types import MessageSendParams, SendMessageRequest
+import uuid
 
 # ─── Tools (LangChain @tool decorators) ───────────────────────────────────────
 # The docstrings and type hints automatically generate the TOOL_SCHEMAS for the LLM.
@@ -12,101 +15,27 @@ async def fetch_pending_alerts() -> dict:
     """Fetch the latest infrastructure alert from the monitoring system. Call this first."""
     await push_agent_state("Monitoring Agent", "Acting", "Calling fetch_pending_alerts")
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(ALERTS_API_URL)
-            resp.raise_for_status()
-            data = resp.json()
-            log.info(f"[fetch_pending_alerts] {data}")
-            return data
+        # async with httpx.AsyncClient(timeout=10.0) as client:
+        #     resp = await client.get(ALERTS_API_URL)
+        #     resp.raise_for_status()
+        #     data = resp.json()
+        #     log.info(f"[fetch_pending_alerts] {data}")
+        #     return data
             # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # data = {
-        #     "alert_id": "alert-123",
-        #     "infra_type": "node",
-        #     "description": "Node 'node-5' is experiencing high disk usage (95% full)."
-        # }
-        # log.info(f"[fetch_pending_alerts] {data}")
-        # return data
+        await asyncio.sleep(1)  # Simulate network delay
+        data = {
+            "alert_id": "alert-123",
+            "infra_type": "node",
+            "description": "Node 'node-5' is experiencing high CPU usage and throttling."
+        }
+        log.info(f"[fetch_pending_alerts] {data}")
+        return data
     except httpx.ConnectError:
         log.warning("[fetch_pending_alerts] Cannot reach alert API.")
         return {"error": "connection refused"}
     except Exception as e:
         log.error(f"[fetch_pending_alerts] {e}")
         return {"error": str(e)}
-
-@tool
-async def increase_storage(node: str, size_gb: int = 50) -> dict:
-    """Increase disk/volume storage capacity for a node.
-    Use when the alert relates to disk full, high IOPS, storage capacity, or volume exhaustion.
-    
-    Args:
-        node: Node or host name from the alert description.
-        size_gb: GB of storage to add. Use 50 if not specified.
-    """
-    await push_agent_state("Monitoring Agent", "Scaling", f"Increasing storage on {node} by {size_gb}GB")
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(INFRA_STORAGE_API, json={"volume_name": node, "size_gb": size_gb})
-            r.raise_for_status()
-            return r.json()
-        # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # result = {"status": "success", "message": f"Storage increased on {node} by {size_gb}GB"}
-        # log.info(f"[increase_storage] {result}")
-        # return result
-    
-    except Exception as e:
-        log.error(f"[increase_storage] {e}")
-        return {"status": "error", "message": str(e)}
-
-@tool
-async def increase_cpu(vm_name: str, cores: int = 2) -> dict:
-    """Increase CPU core allocation for a VM.
-    Use when the alert relates to high CPU utilization, CPU throttling, or compute pressure.
-    
-    Args:
-        vm_name: VM name from the alert description.
-        cores: Number of cores to add. Use 2 if not specified.
-    """
-    await push_agent_state("Monitoring Agent", "Scaling", f"Increasing CPU for {vm_name} by {cores} cores")
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(INFRA_CPU_API, json={"vm_name": vm_name, "cores": cores})
-            r.raise_for_status()
-            return r.json()
-        # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # result = {"status": "success", "message": f"CPU increased for {vm_name} by {cores} cores"}
-        # log.info(f"[increase_cpu] {result}")
-        # return result
-    except Exception as e:
-        log.error(f"[increase_cpu] {e}")
-        return {"status": "error", "message": str(e)}
-
-@tool
-async def increase_memory(vm_name: str, memory_gb: int = 8) -> dict:
-    """Increase RAM allocation for a VM.
-    Use when the alert relates to high memory usage, OOM kills, or memory pressure.
-    
-    Args:
-        vm_name: VM name from the alert description.
-        memory_gb: GB of RAM to add. Use 8 if not specified.
-    """
-    await push_agent_state("Monitoring Agent", "Scaling", f"Increasing memory for {vm_name} by {memory_gb}GB")
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(INFRA_MEM_API, json={"vm_name": vm_name, "ram_gb": memory_gb})
-            r.raise_for_status()
-            return r.json()
-        # Simulated response for testing without a real API
-        # await asyncio.sleep(1)  # Simulate network delay
-        # result = {"status": "success", "message": f"Memory increased for {vm_name} by {memory_gb}GB"}
-        # log.info(f"[increase_memory] {result}")
-        # return result
-    
-    except Exception as e:
-        log.error(f"[increase_memory] {e}")
-        return {"status": "error", "message": str(e)}
 
 @tool
 async def acknowledge_alert(alert_id: str) -> dict:
@@ -134,5 +63,47 @@ async def acknowledge_alert(alert_id: str) -> dict:
     except Exception as e:
         log.error(f"[acknowledge_alert] {e}")
         return {"status": "error", "message": str(e)}
+    
+@tool
+async def transfer_to_vmware(vm_name: str, issue_description: str) -> str:
+    """Call this to transfer compute alerts (CPU/Memory) to the remote A2A VMware Agent.
+    Provide the VM name and a detailed description of the issue.
+    """
+    instruction = f"Fix this issue on {vm_name}: {issue_description}"
+    log.info(f"📤 [A2A Handoff] Routing task to VMware Agent: {instruction}")
+    await push_agent_state("Monitor Agent", "Delegating", f"Sending A2A task to VMware Agent")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as httpx_client:
+            # Step 1: Resolve the remote Agent Card dynamically
+            resolver = A2ACardResolver(httpx_client=httpx_client, base_url=VMWARE_A2A_URL)
+            agent_card = await resolver.get_agent_card()
+            
+            # Step 2: Initialize the A2A Client
+            a2a_client = A2AClient(httpx_client=httpx_client, agent_card=agent_card)
+            
+            # Step 3: Build the strict A2A Request Payload
+            request = SendMessageRequest(
+                id=str(uuid.uuid4()),
+                params=MessageSendParams(
+                    message={
+                        "messageId": uuid.uuid4().hex,
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": instruction}]
+                    }
+                )
+            )
+            
+            # Step 4: Dispatch over the network and wait for the artifact
+            log.info("⏳ Waiting for VMware Agent to complete task...")
+            response = await a2a_client.send_message(request)
+            
+            log.info(f"🎯 [A2A Success] Remote agent returned: {response.result.state}")
+            return f"A2A Task completed by VMware Agent. State: {response.result.state}"
+            
+    except Exception as e:
+        raise e
+        log.error(f"❌ [A2A Error] Communication failed: {str(e)}")
+        return f"A2A Communication failed: {str(e)}"
 
-tools = [fetch_pending_alerts, increase_storage, increase_cpu, increase_memory, acknowledge_alert]
+tools = [fetch_pending_alerts, acknowledge_alert, transfer_to_vmware]
