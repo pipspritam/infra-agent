@@ -6,7 +6,7 @@ import BotScene from "./components/BotScene";
 import DebugPanel from "./components/DebugPanel";
 import SkinSelector from "./components/SkinSelector";
 
-const WS_URL = "ws://192.168.0.109:8000/ws/state";
+const DEFAULT_WS_URL = "ws://192.168.0.104:8000/ws/state";
 
 const MOCK_SCRIPT = [
   {
@@ -62,7 +62,7 @@ const MOCK_SCRIPT = [
   {
     agent_name: "DevBot",
     act: "Done",
-    text: "Issue resolved. Signing off! 🎉",
+    text: "Issue resolved. Signing off!",
   },
   {
     agent_name: "Shail",
@@ -80,6 +80,10 @@ const App = () => {
   const [jsonHistory, setJsonHistory] = useState([]);
   const [robotSkin, setRobotSkin] = useState(0);
   const [skinOpen, setSkinOpen] = useState(false);
+  const [wsUrl, setWsUrl] = useState(
+    () => localStorage.getItem("infrasage_ws_url") || DEFAULT_WS_URL,
+  );
+  const [editingUrl, setEditingUrl] = useState(false);
 
   const monitorNameRef = useRef(null);
   const workerNameRef = useRef(null);
@@ -88,6 +92,13 @@ const App = () => {
   const retryTimer = useRef(null);
   const mounted = useRef(true);
   const mockTimers = useRef([]);
+  const wsUrlRef = useRef(wsUrl);
+
+  // Keep wsUrlRef in sync and persist to localStorage
+  useEffect(() => {
+    wsUrlRef.current = wsUrl;
+    localStorage.setItem("infrasage_ws_url", wsUrl);
+  }, [wsUrl]);
 
   // Close skin selector on outside click
   useEffect(() => {
@@ -134,7 +145,7 @@ const App = () => {
           agent: agent_name,
           text,
           timestamp: ts,
-          slot: isMonitor ? "Shail" : "worker",
+          slot: isMonitor ? "monitor" : "worker",
         },
       ];
     });
@@ -158,7 +169,7 @@ const App = () => {
     if (!mounted.current) return;
     setWsStatus("connecting");
     try {
-      const ws = new WebSocket(WS_URL);
+      const ws = new WebSocket(wsUrlRef.current);
       wsRef.current = ws;
       ws.onopen = () => {
         if (!mounted.current) return;
@@ -195,6 +206,16 @@ const App = () => {
       }, retryMs.current);
     }
   }, [processMessage]);
+
+  const reconnect = useCallback(() => {
+    clearTimeout(retryTimer.current);
+    retryMs.current = 1000;
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+    }
+    connect();
+  }, [connect]);
 
   useEffect(() => {
     mounted.current = true;
@@ -236,6 +257,21 @@ const App = () => {
     }
   };
 
+  const handleUrlSubmit = (newUrl) => {
+    const trimmed = (newUrl || "").trim();
+    if (!trimmed) return;
+    wsUrlRef.current = trimmed;
+    setWsUrl(trimmed);
+    setEditingUrl(false);
+    clearTimeout(retryTimer.current);
+    retryMs.current = 1000;
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+    }
+    connect();
+  };
+
   const statusMap = {
     connecting: { label: "Connecting", cls: "connecting" },
     connected: { label: "Live", cls: "connected" },
@@ -257,13 +293,25 @@ const App = () => {
             />
             <span className="ti-brand">Texas Instruments</span>
             <span className="top-bar-dot-sep">·</span>
-            Agent HQ
+            <span className="infrasage-brand">InfraSage</span>
           </div>
           <div className="top-bar-divider" />
           <div className="top-bar-status">
             <div className={`status-pip ${mockMode ? "connected" : pipCls}`} />
             {mockMode ? "Mock Mode" : statusLabel}
           </div>
+
+          {(wsStatus === "disconnected" || wsStatus === "error") &&
+            !mockMode && (
+              <button
+                className="reconnect-btn"
+                onClick={reconnect}
+                title="Reconnect WebSocket"
+              >
+                ↻ Reconnect
+              </button>
+            )}
+
           <button
             className={`mock-btn${mockMode ? " mock-btn--active" : ""}`}
             onClick={toggleMock}
@@ -272,7 +320,6 @@ const App = () => {
             {mockMode ? "⏹ Stop Mock" : "▶ Mock Mode"}
           </button>
 
-          {/* Robot skin selector */}
           <div data-skin-selector>
             <SkinSelector
               currentSkin={robotSkin}
@@ -282,7 +329,26 @@ const App = () => {
             />
           </div>
 
-          <div className="top-bar-ws-url">{WS_URL}</div>
+          {editingUrl ? (
+            <input
+              autoFocus
+              className="ws-url-input"
+              defaultValue={wsUrl}
+              onBlur={(e) => handleUrlSubmit(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleUrlSubmit(e.currentTarget.value);
+                if (e.key === "Escape") setEditingUrl(false);
+              }}
+            />
+          ) : (
+            <div
+              className="top-bar-ws-url"
+              onClick={() => setEditingUrl(true)}
+              title="Click to edit WebSocket URL"
+            >
+              {wsUrl}
+            </div>
+          )}
         </header>
 
         <div className="stage-content">

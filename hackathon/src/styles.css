@@ -93,6 +93,9 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  padding: 0;
+  border: none;
+  margin: 0;
 }
 
 /* ── Top bar ── */
@@ -104,8 +107,6 @@ body {
   padding: 0 24px;
   gap: 16px;
   background: var(--cream-0);
-  border-bottom: 1.5px solid var(--cream-3);
-  box-shadow: var(--shadow-sm);
   position: relative;
   z-index: 20;
 }
@@ -127,6 +128,16 @@ body {
   border-radius: 50%;
   background: var(--coral);
   flex-shrink: 0;
+}
+
+.infrasage-brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--coral);
+  letter-spacing: -0.01em;
+  line-height: 1;
 }
 
 .ti-brand {
@@ -181,6 +192,55 @@ body {
   padding: 3px 10px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--cream-3);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.top-bar-ws-url:hover {
+  border-color: var(--blue-md);
+  color: var(--ink-2);
+}
+
+.ws-url-input {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: var(--ink-1);
+  letter-spacing: 0.03em;
+  background: var(--cream-0);
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--blue-md);
+  outline: none;
+  min-width: 240px;
+}
+
+.reconnect-btn {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--coral);
+  background: transparent;
+  color: var(--coral);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.reconnect-btn:hover {
+  background: var(--coral);
+  color: var(--cream-0);
+}
+
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 .mock-btn {
@@ -565,12 +625,18 @@ body {
   border-radius: 2px;
 }
 
-/* Nameplate chip */
+/* Nameplate chip — FIXED: Responsive and flexible width */
 .inline-agent__nameplate {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 8px;
+
+  /* NEW: Flexible width constraints */
+  min-width: 120px;
+  max-width: 90%;
+  width: auto;
+
   background: rgba(255, 253, 247, 0.88);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -580,6 +646,10 @@ body {
   box-shadow:
     0 4px 16px rgba(28, 26, 22, 0.14),
     0 1px 4px rgba(28, 26, 22, 0.08);
+
+  /* NEW: Prevent overflow */
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .inline-agent__nameplate-dot {
@@ -590,14 +660,23 @@ body {
   flex-shrink: 0;
 }
 
+/* FIXED: Prevent text overflow */
 .inline-agent__nameplate-name {
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 0.04em;
   color: var(--ink-1);
+
+  /* NEW: Handle overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
+/* FIXED: Prevent act badge overflow */
 .inline-agent__nameplate-act {
   font-family: var(--font-mono);
   font-size: 8px;
@@ -608,6 +687,62 @@ body {
   background: var(--cream-2);
   border-radius: 4px;
   margin-left: 2px;
+
+  /* NEW: Prevent shrinking and overflow */
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+/* NEW: Responsive breakpoints */
+@media (max-width: 768px) {
+  .inline-agent__nameplate {
+    min-width: 100px;
+    max-width: 95%;
+    padding: 3px 10px;
+    gap: 5px;
+  }
+
+  .inline-agent__nameplate-name {
+    font-size: 9.5px;
+  }
+
+  .inline-agent__nameplate-act {
+    font-size: 7px;
+    padding: 1px 5px;
+    max-width: 80px;
+  }
+
+  .inline-agent__nameplate-dot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inline-agent__nameplate {
+    min-width: 80px;
+    max-width: 98%;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  .inline-agent__nameplate-name {
+    font-size: 9px;
+  }
+
+  .inline-agent__nameplate-act {
+    font-size: 6.5px;
+    padding: 1px 4px;
+    max-width: 70px;
+  }
+
+  .inline-agent__nameplate-dot {
+    width: 4.5px;
+    height: 4.5px;
+  }
 }
 
 /* ══════════════════════

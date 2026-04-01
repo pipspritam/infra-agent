@@ -1,23 +1,43 @@
 import React, { useState, useEffect, useRef } from "react";
 import RobotSVG from "./RobotSVG";
 
+/* ─── Typewriter text ────────────────────────────────────────────────────────── */
+function TypewriterText({ text, speed = 18 }) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    if (!text) return;
+    setDisplayed("");
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, speed]);
+  const done = displayed.length >= (text?.length ?? 0);
+  return (
+    <>
+      {displayed}
+      {!done && (
+        <span
+          style={{
+            opacity: 0.6,
+            animation: "cursor-blink 0.6s step-end infinite",
+            fontWeight: 700,
+          }}
+        >
+          ▋
+        </span>
+      )}
+    </>
+  );
+}
+
 /* ─── Speech bubble ─────────────────────────────────────────────────────────── */
 function InlineBubble({ text, act }) {
   if (!text) return null;
   const isThought = act === "Thinking";
-
-  const words = text.trim().split(/\s+/);
-  const lines = [];
-  let cur = "";
-  for (const w of words) {
-    const next = cur ? `${cur} ${w}` : w;
-    if (next.length > 22 && cur) {
-      lines.push(cur);
-      cur = w;
-    } else cur = next;
-  }
-  if (cur) lines.push(cur);
-  const wrapped = lines.join("\n") || "…";
 
   if (isThought) {
     return (
@@ -56,19 +76,18 @@ function InlineBubble({ text, act }) {
             background: "#FFFDF7",
             border: "2px dashed #1C1A16",
             borderRadius: 16,
-            padding: "5px 8px",
-            maxWidth: 140,
+            padding: "8px 12px",
+            maxWidth: 190,
             fontFamily: "'DM Mono','Courier New',monospace",
-            fontSize: "8.5px",
-            lineHeight: 1.5,
+            fontSize: "11px",
+            lineHeight: 1.55,
             color: "#2E2B24",
-            whiteSpace: "pre-wrap",
             wordBreak: "break-word",
             animation:
               "bubble-appear 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
           }}
         >
-          {wrapped}
+          <TypewriterText text={text} />
         </div>
       </div>
     );
@@ -80,14 +99,13 @@ function InlineBubble({ text, act }) {
         background: "#FFFDF7",
         border: "2px solid #1C1A16",
         borderRadius: 10,
-        padding: "5px 8px",
-        maxWidth: 140,
+        padding: "8px 12px",
+        maxWidth: 190,
         fontFamily: "'DM Mono','Courier New',monospace",
-        fontSize: "8.5px",
-        lineHeight: 1.5,
+        fontSize: "11px",
+        lineHeight: 1.55,
         color: "#2E2B24",
         boxShadow: "2px 2px 0 #1C1A16",
-        whiteSpace: "pre-wrap",
         wordBreak: "break-word",
         position: "relative",
         marginBottom: 12,
@@ -95,7 +113,7 @@ function InlineBubble({ text, act }) {
         animation: "bubble-appear 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
       }}
     >
-      {wrapped}
+      <TypewriterText text={text} />
       <div
         style={{
           position: "absolute",
@@ -120,9 +138,9 @@ function NamePlate({ name, act, accentColor, x, y }) {
   return (
     <g>
       <rect
-        x={x - 56}
+        x={x - Math.max(56, name.length * 3 + 30)}
         y={y}
-        width="112"
+        width={Math.max(112, name.length * 6 + 60)}
         height="20"
         rx="6"
         fill="#FFFDF7"
@@ -130,17 +148,22 @@ function NamePlate({ name, act, accentColor, x, y }) {
         strokeWidth="1.2"
       />
       <rect
-        x={x - 56}
+        x={x - Math.max(56, name.length * 3 + 30)}
         y={y}
-        width="112"
+        width={Math.max(112, name.length * 6 + 60)}
         height="20"
         rx="6"
         fill={accentColor}
         opacity="0.05"
       />
-      <circle cx={x - 40} cy={y + 10} r="3.5" fill={accentColor} />
+      <circle
+        cx={x - Math.max(56, name.length * 3 + 30) + 16}
+        cy={y + 10}
+        r="3.5"
+        fill={accentColor}
+      />
       <text
-        x={x - 29}
+        x={x - Math.max(56, name.length * 3 + 30) + 27}
         y={y + 13.5}
         fill="#2E2B24"
         fontSize="7.5"
@@ -151,15 +174,20 @@ function NamePlate({ name, act, accentColor, x, y }) {
         {name}
       </text>
       <text
-        x={x + 38}
-        y={y + 13.5}
+        x={
+          x -
+          Math.max(56, name.length * 3 + 30) +
+          Math.max(112, name.length * 6 + 60) -
+          6
+        }
+        y={y + 11.5}
         fill={accentColor}
         fontSize="6"
         fontFamily="monospace"
         letterSpacing="0.06em"
         textAnchor="end"
       >
-        {statusText}
+        ({statusText})
       </text>
     </g>
   );
