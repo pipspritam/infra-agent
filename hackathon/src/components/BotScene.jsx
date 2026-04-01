@@ -180,7 +180,7 @@ function NamePlate({ name, act, accentColor, x, y }) {
           Math.max(112, name.length * 6 + 60) -
           6
         }
-        y={y + 11.5}
+        y={y + 12.5}
         fill={accentColor}
         fontSize="6"
         fontFamily="monospace"

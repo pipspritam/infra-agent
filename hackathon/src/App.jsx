@@ -312,13 +312,13 @@ const App = () => {
               </button>
             )}
 
-          <button
+          {/* <button
             className={`mock-btn${mockMode ? " mock-btn--active" : ""}`}
             onClick={toggleMock}
             aria-label={mockMode ? "Stop mock mode" : "Start mock mode"}
           >
             {mockMode ? "⏹ Stop Mock" : "▶ Mock Mode"}
-          </button>
+          </button> */}
 
           <div data-skin-selector>
             <SkinSelector
