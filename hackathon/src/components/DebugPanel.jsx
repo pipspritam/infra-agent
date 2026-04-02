@@ -234,12 +234,18 @@ const MOCK_INCIDENTS = [
 ];
 
 async function fetchIncidents() {
-  // 🔌 Swap this mock for a real call:
-  // const res = await fetch("/api/incidents");
-  // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  // return res.json();
-  await new Promise((r) => setTimeout(r, 620));
-  return MOCK_INCIDENTS;
+  const res = await fetch("http://lelvdckshail.itg.ti.com:8000/alerts/history");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+
+  // Parse dialogue JSON string if it exists
+  return data.map((incident) => ({
+    ...incident,
+    dialogue:
+      typeof incident.dialogue === "string"
+        ? JSON.parse(incident.dialogue)
+        : incident.dialogue,
+  }));
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
